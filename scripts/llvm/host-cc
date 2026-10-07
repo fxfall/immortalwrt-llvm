@@ -31,4 +31,7 @@ fi
 if [ -n "${LLVM_AUDIT_LOG:-}" ]; then
   printf 'host\t%s\t%s\n' "$llvm_bin/$compiler" "$*" >> "$LLVM_AUDIT_LOG"
 fi
-exec "$llvm_bin/$compiler" --rtlib=compiler-rt "$@"
+if [ "$link" = yes ]; then
+    set -- "$@" --rtlib=compiler-rt
+fi
+exec "$llvm_bin/$compiler" "$@"
