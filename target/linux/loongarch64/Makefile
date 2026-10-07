@@ -7,7 +7,7 @@ include $(TOPDIR)/rules.mk
 ARCH:=loongarch64
 BOARD:=loongarch64
 BOARDNAME:=Loongson LoongArch
-FEATURES:=audio display ext4 pcie boot-part rootfs-part rtc usb targz
+FEATURES:=ext4 pcie boot-part rootfs-part rtc usb targz
 SUBTARGETS:=generic
 
 KERNEL_PATCHVER:=6.12
@@ -18,10 +18,11 @@ KERNELNAME:=vmlinuz.efi dtbs
 include $(INCLUDE_DIR)/target.mk
 
 DEFAULT_PACKAGES += \
-	partx-utils blkid fdisk automount grub2-efi-loongarch64 \
+	partx-utils blkid fdisk e2fsprogs automount grub2-efi-loongarch64 \
 	kmod-e1000e kmod-i40e kmod-igb kmod-igbvf kmod-igc kmod-ixgbe \
 	kmod-ixgbevf kmod-dwmac-motorcomm kmod-r8125 kmod-r8126 kmod-r8127 \
 	kmod-r8168 kmod-usb-net-asix kmod-usb-net-asix-ax88179 kmod-usb-net-rtl8150 \
 	kmod-usb-net-rtl8152-vendor
+DEFAULT_PACKAGES += video-support
 
 $(eval $(call BuildTarget))
