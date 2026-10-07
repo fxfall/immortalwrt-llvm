@@ -44,7 +44,7 @@ jobs:
           apt-get clean
           rm -rf /var/lib/apt/lists/*
           clang-23 --version
-          lld-23 --version
+          ld.lld-23 --version
           df -h .
 
       - name: Fetch feeds and apply LLVM package overlays
