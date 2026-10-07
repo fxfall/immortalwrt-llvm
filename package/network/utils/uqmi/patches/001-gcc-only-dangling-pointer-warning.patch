@@ -1,0 +1,17 @@
+Keep the GCC-only dangling pointer diagnostic option on GCC.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -5,7 +5,11 @@
+ OPTION(BUILD_STATIC OFF)
+ OPTION(BUILD_UQMID OFF)
+ 
+-ADD_DEFINITIONS(-Os -ggdb -Wall -Werror --std=gnu99 -Wmissing-declarations -Wno-enum-conversion -Wno-dangling-pointer)
++ADD_DEFINITIONS(-Os -ggdb -Wall -Werror --std=gnu99 -Wmissing-declarations -Wno-enum-conversion)
++
++IF(CMAKE_C_COMPILER_ID STREQUAL "GNU")
++  ADD_DEFINITIONS(-Wno-dangling-pointer)
++ENDIF()
+ 
+ SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
+ 

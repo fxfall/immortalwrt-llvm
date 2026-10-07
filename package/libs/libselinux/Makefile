@@ -25,6 +25,10 @@ HOST_BUILD_DEPENDS:=libsepol/host musl-fts/host pcre2/host
 PKG_BUILD_PARALLEL:=1
 
 include $(INCLUDE_DIR)/package.mk
+
+ifeq ($(CONFIG_USE_LLVM_TOOLCHAIN),y)
+  TARGET_LDFLAGS += -Wl,--undefined-version
+endif
 include $(INCLUDE_DIR)/host-build.mk
 
 LIBSELINUX_UTILS := \

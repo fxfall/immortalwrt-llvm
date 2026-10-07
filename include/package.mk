@@ -68,10 +68,10 @@ endif
 # loongarch64 sets CONFIG_PAGE_SIZE_16KB, all other targets set CONFIG_PAGE_SIZE_4KB only.
 ifeq ($(ARCH),loongarch64)
   TARGET_CFLAGS += -Wl,-z,max-page-size=16384
-  TARGET_LDFLAGS += -zmax-page-size=16384
+  TARGET_LDFLAGS += -z max-page-size=16384
 else
   TARGET_CFLAGS += -Wl,-z,max-page-size=4096
-  TARGET_LDFLAGS += -zmax-page-size=4096
+  TARGET_LDFLAGS += -z max-page-size=4096
 endif
 
 ATOMIC64_DEPENDS:=+!HAS_ATOMIC64:libatomic

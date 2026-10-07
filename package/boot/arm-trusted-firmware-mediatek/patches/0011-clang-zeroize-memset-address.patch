@@ -1,0 +1,17 @@
+Clang cannot take the address of __builtin_memset. Use the real TF-A
+memset symbol for the existing volatile pointer and memory barrier.
+
+--- a/plat/mediatek/apsoc_common/explicit_zeroize.c
++++ b/plat/mediatek/apsoc_common/explicit_zeroize.c
+@@ -7,6 +7,11 @@
+ 
+ #include <string.h>
+ 
++#ifdef __clang__
++#undef memset
++void *memset(void *, int, size_t);
++#endif
++
+ /*
+  * Where possible, we try to detect the presence of a platform-provided
+  * secure memset, such as explicit_bzero(), that is safe against being optimized

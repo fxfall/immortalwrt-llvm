@@ -1,0 +1,15 @@
+This prototype parses -s but currently always enables strict parsing.
+Mark the intentionally unused option state without changing parser behavior,
+so Clang 23's -Wunused-but-set-global does not break -Werror builds.
+
+--- a/apps/json_parse.c
++++ b/apps/json_parse.c
+@@ -37,7 +37,7 @@
+ 
+ static int formatted_output = JSON_C_TO_STRING_SPACED;
+ static int show_output = 1;
+-static int strict_mode = 0;
++static int strict_mode __attribute__((unused)) = 0;
+ static int color = 0;
+ static const char *fname = NULL;
+ 

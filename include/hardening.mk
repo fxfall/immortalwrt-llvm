@@ -11,6 +11,8 @@ PKG_RELRO ?= 1
 PKG_DT_RELR ?= 1
 PKG_FANALYZER ?= 0
 
+PIE_LDFLAGS = -pie
+
 ifdef CONFIG_PKG_CHECK_FORMAT_SECURITY
   ifeq ($(strip $(PKG_CHECK_FORMAT_SECURITY)),1)
     TARGET_CFLAGS += -Wformat -Werror=format-security
@@ -19,13 +21,13 @@ endif
 ifdef CONFIG_PKG_ASLR_PIE_ALL
   ifeq ($(strip $(PKG_ASLR_PIE)),1)
     TARGET_CFLAGS += $(FPIC)
-    TARGET_LDFLAGS += $(FPIC) -specs=$(INCLUDE_DIR)/hardened-ld-pie.specs
+    TARGET_LDFLAGS += $(FPIC) $(PIE_LDFLAGS)
   endif
 endif
 ifdef CONFIG_PKG_ASLR_PIE_REGULAR
   ifeq ($(strip $(PKG_ASLR_PIE_REGULAR)),1)
     TARGET_CFLAGS += $(FPIC)
-    TARGET_LDFLAGS += $(FPIC) -specs=$(INCLUDE_DIR)/hardened-ld-pie.specs
+    TARGET_LDFLAGS += $(FPIC) $(PIE_LDFLAGS)
   endif
 endif
 ifdef CONFIG_PKG_CC_STACKPROTECTOR_REGULAR
@@ -61,20 +63,20 @@ endif
 ifdef CONFIG_PKG_RELRO_PARTIAL
   ifeq ($(strip $(PKG_RELRO)),1)
     TARGET_CFLAGS += -Wl,-z,relro
-    TARGET_LDFLAGS += -zrelro
+    TARGET_LDFLAGS += -z relro
   endif
 endif
 ifdef CONFIG_PKG_RELRO_FULL
   ifeq ($(strip $(PKG_RELRO)),1)
     TARGET_CFLAGS += -Wl,-z,now -Wl,-z,relro
-    TARGET_LDFLAGS += -znow -zrelro
+    TARGET_LDFLAGS += -z now -z relro
   endif
 endif
 
 ifdef CONFIG_PKG_DT_RELR
   ifeq ($(strip $(PKG_DT_RELR)),1)
     TARGET_CFLAGS += -Wl,-z,pack-relative-relocs
-    TARGET_LDFLAGS += -zpack-relative-relocs
+    TARGET_LDFLAGS += -z pack-relative-relocs
   endif
 endif
 

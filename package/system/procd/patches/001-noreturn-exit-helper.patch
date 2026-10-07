@@ -1,0 +1,14 @@
+Tell Clang that the cleanup helper always exits, so its callers' error paths
+are understood as unreachable after cleanup.
+
+--- a/jail/jail.c
++++ b/jail/jail.c
+@@ -1735,7 +1735,7 @@
+ 	free(argv);
+ }
+ 
+-static void free_and_exit(int ret)
++static void __attribute__((noreturn)) free_and_exit(int ret)
+ {
+ 	if (!exit_from_child && !stop_announced && !jail_restarting())
+ 		notify_signal(opts.notify_fd);

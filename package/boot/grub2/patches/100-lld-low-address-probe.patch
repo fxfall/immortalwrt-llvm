@@ -1,0 +1,7 @@
+--- a/configure
++++ b/configure
+@@ -37553,2 +37553,2 @@
+-  TARGET_IMG_LDFLAGS='-Wl,-N'
+-  TARGET_IMG_LDFLAGS_AC='-Wl,-N'
++  TARGET_IMG_LDFLAGS='-Wl,--image-base=0 -Wl,-N'
++  TARGET_IMG_LDFLAGS_AC='-Wl,--image-base=0 -Wl,-N'

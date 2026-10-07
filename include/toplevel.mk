@@ -161,12 +161,8 @@ oldconfig: scripts/config/conf prepare-tmpinfo FORCE
 	[ -L .config ] && export KCONFIG_OVERWRITECONFIG=1; \
 		$< $(KCONF_FLAGS) --$(if $(confdefault),$(confdefault),old)config Config.in
 
-menuconfig: scripts/config/mconf prepare-tmpinfo FORCE
-	if [ \! -e .config -a -e $(HOME)/.openwrt/defconfig ]; then \
-		cp $(HOME)/.openwrt/defconfig .config; \
-	fi
-	[ -L .config ] && export KCONFIG_OVERWRITECONFIG=1; \
-		$< Config.in
+menuconfig: FORCE
+	@./scripts/llvm/menuconfig.sh
 
 nconfig: scripts/config/nconf prepare-tmpinfo FORCE
 	if [ \! -e .config -a -e $(HOME)/.openwrt/defconfig ]; then \
@@ -310,4 +306,3 @@ ifeq ($(findstring v,$(DEBUG)),)
 endif
 .PHONY: help FORCE
 .NOTPARALLEL:
-

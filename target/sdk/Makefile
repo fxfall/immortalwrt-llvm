@@ -13,7 +13,7 @@ include $(INCLUDE_DIR)/download.mk
 
 override MAKEFLAGS=
 
-SDK_NAME:=$(VERSION_DIST_SANITIZED)-sdk-$(if $(CONFIG_VERSION_FILENAMES),$(VERSION_NUMBER)-)$(BOARD)$(if $(SUBTARGET),-$(SUBTARGET))$(if $(GCCV),_gcc-$(GCCV))$(DIR_SUFFIX).$(HOST_OS)-$(HOST_ARCH)
+SDK_NAME:=$(VERSION_DIST_SANITIZED)-sdk-$(if $(CONFIG_VERSION_FILENAMES),$(VERSION_NUMBER)-)$(BOARD)$(if $(SUBTARGET),-$(SUBTARGET))_llvm-$(LLVM_VERSION)$(DIR_SUFFIX).$(HOST_OS)-$(HOST_ARCH)
 SDK_BUILD_DIR:=$(BUILD_DIR)/$(SDK_NAME)
 
 STAGING_SUBDIR_HOST := staging_dir/host
@@ -121,7 +121,6 @@ $(BIN_DIR)/$(SDK_NAME).tar.zst: clean
 		$(TAR) -xf - -C $(SDK_BUILD_DIR)
 
 	(cd $(SDK_BUILD_DIR); find $(STAGING_SUBDIR_HOST)/bin $(STAGING_SUBDIR_HOST)/usr/bin \
-		$(STAGING_SUBDIR_HOST)/llvm-bpf/bin $(STAGING_SUBDIR_HOST)/llvm-bpf/libexec \
 		$(STAGING_SUBDIR_TOOLCHAIN)/bin $(STAGING_SUBDIR_TOOLCHAIN)/*/bin $(STAGING_SUBDIR_TOOLCHAIN)/libexec \
 		$(KDIR_BASE) \
 		-type f | $(BUNDLER_COMMAND))
@@ -130,15 +129,12 @@ $(BIN_DIR)/$(SDK_NAME).tar.zst: clean
 		find \
 			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_HOST)/bin \
 			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_HOST)/usr/bin \
-			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_HOST)/llvm-bpf/bin \
-			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_HOST)/llvm-bpf/libexec \
 			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_TOOLCHAIN)/bin \
 			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_TOOLCHAIN)/*/bin \
 			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_TOOLCHAIN)/libexec \
 			-type f; \
 		find \
 			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_HOST)/lib \
-			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_HOST)/llvm-bpf/lib \
 			$(SDK_BUILD_DIR)/$(STAGING_SUBDIR_HOST)/usr/lib \
 			-type f -name \*.so\*; \
 	) | xargs strip 2>/dev/null >/dev/null

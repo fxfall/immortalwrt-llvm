@@ -27,7 +27,6 @@ $(eval $(call TestHostCommand,python3-pyelftools, \
     Please install the Python3 pyelftools module, \
     $(STAGING_DIR_HOST)/bin/python3 -c 'import elftools'))
 
-export GCC_HONOUR_COPTS=s
 
 define Package/optee-os/install/default
 	$(CP) $(patsubst %,$(PKG_BUILD_DIR)/out/arm-plat-$(PLAT)/core/%,$(OPTEE_IMAGE)) $(1)/

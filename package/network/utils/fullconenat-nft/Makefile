@@ -10,6 +10,12 @@
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
+ifeq ($(CONFIG_USE_LLVM_TOOLCHAIN),y)
+ifeq ($(LINUX_KARCH),x86)
+  CONFIG_KERNEL_CFLAGS += -Wno-error=frame-address
+endif
+endif
+
 PKG_NAME:=fullconenat-nft
 PKG_RELEASE:=3
 

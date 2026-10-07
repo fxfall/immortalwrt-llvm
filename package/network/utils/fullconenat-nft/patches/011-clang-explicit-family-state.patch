@@ -1,0 +1,54 @@
+Keep the existing IPv4/IPv6 invariant explicit and avoid uninitialized state.
+Remove unused DNAT port state; supported-family NAT behavior is unchanged.
+
+--- a/src/nf_nat_fullcone.c
++++ b/src/nf_nat_fullcone.c
+@@ -1130,7 +1130,7 @@
+ 	enum ip_conntrack_info ctinfo;
+ 	struct nf_conntrack_tuple *ct_tuple_origin;
+ 
+-	uint16_t port, original_port;
++	uint16_t port;
+ 	uint8_t protonum;
+ 
+ /* NFPROTO specific def */
+@@ -1141,7 +1141,8 @@
+ 	union nf_inet_addr *ip_6;
+ 	/* NFPROTO specific def end */
+ 
+-	WARN_ON(!(nfproto == NFPROTO_IPV4 || nfproto == NFPROTO_IPV6));
++	if (WARN_ON(!(nfproto == NFPROTO_IPV4 || nfproto == NFPROTO_IPV6)))
++		return NF_DROP;
+ 
+ 	/* NFPROTO specific init */
+ 	mapping = NULL;
+@@ -1151,7 +1152,6 @@
+ 	ip_6 = NULL;
+ 	/* NFPROTO specific init end */
+ 
+-	original_port = 0;
+ 	ret = NFT_CONTINUE;	// BUG: use XT_CONTINUE for Xtables
+ 
+ 	ct = nf_ct_get(skb, &ctinfo);
+@@ -1265,9 +1265,9 @@
+ 	enum ip_conntrack_info ctinfo;
+ 	struct nf_conn_nat *nat;
+ 	struct nf_conntrack_tuple *ct_tuple, *ct_tuple_origin;
+-	uint16_t port, original_port, want_port;
++	uint16_t port, original_port, want_port = 0;
+ 	uint8_t protonum;
+-	bool is_src_mapping_active;
++	bool is_src_mapping_active = false;
+ 
+ 	/* NFPROTO specific def */
+ 	struct nat_mapping *mapping, *src_mapping;
+@@ -1281,7 +1281,8 @@
+ 
+ 	/* NFPROTO specific def end */
+ 
+-	WARN_ON(!(nfproto == NFPROTO_IPV4 || nfproto == NFPROTO_IPV6));
++	if (WARN_ON(!(nfproto == NFPROTO_IPV4 || nfproto == NFPROTO_IPV6)))
++		return NF_DROP;
+ 
+ 	/* NFPROTO specific init */
+ 	mapping = NULL;

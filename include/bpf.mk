@@ -1,40 +1,11 @@
 BPF_DEPENDS := @HAS_BPF_TOOLCHAIN +@NEED_BPF_TOOLCHAIN
 
-CLANG_MIN_VER:=12
-
-ifneq ($(CONFIG_USE_LLVM_HOST),)
-  find-llvm-tool=$(firstword $(shell PATH='$(BPF_PATH)' command -v $(1) || echo '$(firstword $(1))-not-found'))
-
-  BPF_TOOLCHAIN_HOST_PATH:=$(call qstrip,$(CONFIG_BPF_TOOLCHAIN_HOST_PATH))
-  ifneq ($(BPF_TOOLCHAIN_HOST_PATH),)
-    BPF_PATH:=$(BPF_TOOLCHAIN_HOST_PATH)/bin:$(PATH)
-  else
-    BPF_PATH:=$(PATH)
-  endif
-  CLANG:=$(call find-llvm-tool,clang clang-13 clang-12)
-  LLVM_VER:=$(subst clang,,$(notdir $(CLANG)))
-
-  BPF_PATH:=$(dir $(CLANG)):$(BPF_PATH)
-  LLVM_LLC:=$(call find-llvm-tool,llc$(LLVM_VER))
-  LLVM_DIS:=$(call find-llvm-tool,llvm-dis$(LLVM_VER))
-  LLVM_OPT:=$(call find-llvm-tool,opt$(LLVM_VER))
-  LLVM_STRIP:=$(call find-llvm-tool,llvm-strip$(LLVM_VER))
-else
-  LLVM_PATH:=/invalid
-
-  ifneq ($(CONFIG_USE_LLVM_PREBUILT),)
-    LLVM_PATH:=$(TOPDIR)/llvm-bpf/bin
-  endif
-  ifneq ($(CONFIG_USE_LLVM_BUILD),)
-    LLVM_PATH:=$(STAGING_DIR_HOST)/llvm-bpf/bin
-  endif
-
-  CLANG:=$(LLVM_PATH)/clang
-  LLVM_LLC:=$(LLVM_PATH)/llc
-  LLVM_DIS:=$(LLVM_PATH)/llvm-dis
-  LLVM_OPT:=$(LLVM_PATH)/opt
-  LLVM_STRIP:=$(LLVM_PATH)/llvm-strip
-endif
+CLANG_MIN_VER:=$(LLVM_MAJOR)
+CLANG:=$(LLVM_BINDIR)/clang
+LLVM_LLC:=$(LLVM_BINDIR)/llc
+LLVM_DIS:=$(LLVM_BINDIR)/llvm-dis
+LLVM_OPT:=$(LLVM_BINDIR)/opt
+LLVM_STRIP:=$(LLVM_BINDIR)/llvm-strip
 
 BPF_KARCH:=mips
 BPF_ARCH:=mips$(if $(CONFIG_ARCH_64BIT),64)$(if $(CONFIG_BIG_ENDIAN),,el)
@@ -43,7 +14,7 @@ BPF_TARGET:=bpf$(if $(CONFIG_BIG_ENDIAN),eb,el)
 BPF_HEADERS_DIR:=$(STAGING_DIR)/bpf-headers
 
 BPF_KERNEL_INCLUDE := \
-	-nostdinc -isystem $(TOOLCHAIN_ROOT_DIR)/lib/gcc/*/*/include \
+	-nostdinc -isystem $(TOOLCHAIN_DIR)/llvm-resource/include \
 	$(patsubst %,-isystem%,$(TOOLCHAIN_INC_DIRS)) \
 	-I$(BPF_HEADERS_DIR)/arch/$(BPF_KARCH)/include \
 	-I$(BPF_HEADERS_DIR)/arch/$(BPF_KARCH)/include/asm/mach-generic \
@@ -97,4 +68,3 @@ define CompileBPF
 	$(CP) $(patsubst %.c,%.o,$(1)) $(patsubst %.c,%.debug.o,$(1))
 	$(LLVM_STRIP) --strip-debug $(patsubst %.c,%.o,$(1))
 endef
-

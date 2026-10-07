@@ -25,6 +25,10 @@ PKG_INSTALL:=1
 PKG_BUILD_DEPENDS:=!USE_GLIBC:argp-standalone
 
 include $(INCLUDE_DIR)/package.mk
+
+ifeq ($(CONFIG_USE_LLVM_TOOLCHAIN),y)
+  TARGET_LDFLAGS += -Wl,--undefined-version
+endif
 include $(INCLUDE_DIR)/nls.mk
 
 define Package/elfutils/Default
@@ -86,7 +90,7 @@ TARGET_CFLAGS += \
 	-D_GNU_SOURCE \
 	-Wno-unused-result \
 	-Wno-format-nonliteral \
-	-Wno-error=use-after-free
+	$(if $(CONFIG_USE_LLVM_TOOLCHAIN),,-Wno-error=use-after-free)
 
 TARGET_LDFLAGS += $(FPIC)
 

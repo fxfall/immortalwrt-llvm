@@ -1,0 +1,13 @@
+Declare the existing printf-style logging contract for Clang diagnostics.
+
+--- a/src/odhcp6c.h
++++ b/src/odhcp6c.h
+@@ -39,7 +39,7 @@
+ 
+ #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+ 
+-void __iflog(int lvl, const char *fmt, ...);
++void __iflog(int lvl, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+ #define debug(fmt, ...) __iflog(LOG_DEBUG, fmt __VA_OPT__(, ) __VA_ARGS__)
+ #define info(fmt, ...) __iflog(LOG_INFO, fmt __VA_OPT__(, ) __VA_ARGS__)
+ #define notice(fmt, ...) __iflog(LOG_NOTICE, fmt __VA_OPT__(, ) __VA_ARGS__)

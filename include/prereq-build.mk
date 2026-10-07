@@ -31,31 +31,23 @@ $(eval $(call TestHostCommand,proper-umask, \
 	umask | grep -xE 0?0[012][012]))
 
 ifndef IB
-$(eval $(call SetupHostCommand,gcc, \
-	Please install the GNU C Compiler (gcc) 10 or later, \
-	$(CC) -dumpversion | grep -E '^(1[0-9]|[2-9][0-9])\.?', \
-	gcc -dumpversion | grep -E '^(1[0-9]|[2-9][0-9])\.?', \
-	clang -dumpversion | grep -E '^(1[2-9]|[2-9][0-9])\.', \
-	clang-12 -dumpversion | grep -E '^(1[2-9]|[2-9][0-9])\.' ))
+$(eval $(call TestHostCommand,llvm-clang-version, \
+	LLVM Clang $(LLVM_VERSION) is required, \
+	$(HOSTCC) -dumpversion | grep -Fx '$(LLVM_VERSION)'))
 
-$(eval $(call TestHostCommand,working-gcc, \
-	Please reinstall the GNU C Compiler (10 or later) - \
-	it appears to be broken, \
+$(eval $(call TestHostCommand,working-llvm-clang, \
+	LLVM Clang appears to be broken, \
 	echo 'int main(int argc, char **argv) { return 0; }' | \
-		$(STAGING_DIR_HOST)/bin/gcc -x c -o $(TMP_DIR)/a.out -))
+		$(HOSTCC) -x c -o $(TMP_DIR)/a.out -))
 
-$(eval $(call SetupHostCommand,g++, \
-	Please install the GNU C++ Compiler (g++) 10 or later, \
-	$(CXX) -dumpversion | grep -E '^(1[0-9]|[2-9][0-9])\.?', \
-	g++ -dumpversion | grep -E '^(1[0-9]|[2-9][0-9])\.?', \
-	clang++ -dumpversion | grep -E '^(1[2-9]|[2-9][0-9])\.', \
-	clang++-12 -dumpversion | grep -E '^(1[2-9]|[2-9][0-9])\.' ))
+$(eval $(call TestHostCommand,llvm-clangxx-version, \
+	LLVM Clang++ $(LLVM_VERSION) is required, \
+	$(HOSTCXX) -dumpversion | grep -Fx '$(LLVM_VERSION)'))
 
-$(eval $(call TestHostCommand,working-g++, \
-	Please reinstall the GNU C++ Compiler (10 or later) - \
-	it appears to be broken, \
+$(eval $(call TestHostCommand,working-llvm-clangxx, \
+	LLVM Clang++ appears to be broken, \
 	echo 'int main(int argc, char **argv) { return 0; }' | \
-		$(STAGING_DIR_HOST)/bin/g++ -x c++ -o $(TMP_DIR)/a.out - -lstdc++ && \
+		$(HOSTCXX) -stdlib=libc++ -x c++ -o $(TMP_DIR)/a.out - && \
 		$(TMP_DIR)/a.out))
 
 $(eval $(call RequireCHeader,ncurses.h, \
@@ -239,7 +231,7 @@ endif
 
 $(STAGING_DIR_HOST)/bin/mkhash: $(SCRIPT_DIR)/mkhash.c
 	mkdir -p $(dir $@)
-	$(STAGING_DIR_HOST)/bin/gcc -O2 -I$(TOPDIR)/tools/include -o $@ $<
+	$(HOSTCC) -O2 -I$(TOPDIR)/tools/include -o $@ $<
 
 $(STAGING_DIR_HOST)/bin/xxd: $(SCRIPT_DIR)/xxdi.pl
 	$(LN) $< $@

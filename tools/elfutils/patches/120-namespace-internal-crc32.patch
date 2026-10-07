@@ -1,0 +1,80 @@
+Give elfutils' internal CRC32 routine a private name to avoid exporting a
+generic symbol that collides with the libc++abi runtime.
+
+--- a/lib/libeu.h
++++ b/lib/libeu.h
+@@ -42,7 +42,7 @@
+ extern char *xasprintf(const char *fmt, ...)
+ 	__attribute__ ((format (printf, 1, 2))) __attribute__ ((__malloc__));
+ 
+-extern uint32_t crc32 (uint32_t crc, unsigned char *buf, size_t len);
++extern uint32_t __libeu_crc32 (uint32_t crc, unsigned char *buf, size_t len);
+ extern int crc32_file (int fd, uint32_t *resp);
+ 
+ #endif
+--- a/lib/crc32.c
++++ b/lib/crc32.c
+@@ -91,7 +91,7 @@
+ };
+ 
+ uint32_t
+-crc32 (uint32_t crc, unsigned char *buf, size_t len)
++__libeu_crc32 (uint32_t crc, unsigned char *buf, size_t len)
+ {
+   unsigned char *end;
+ 
+--- a/lib/crc32_file.c
++++ b/lib/crc32_file.c
+@@ -66,11 +66,11 @@
+ 	    {
+ 	      if (st.st_size <= (off_t) mapsize)
+ 		{
+-		  *resp = crc32 (crc, mapped, st.st_size);
++		  *resp = __libeu_crc32 (crc, mapped, st.st_size);
+ 		  munmap (mapped, mapsize);
+ 		  return 0;
+ 		}
+-	      crc = crc32 (crc, mapped, mapsize);
++	      crc = __libeu_crc32 (crc, mapped, mapsize);
+ 	      off += mapsize;
+ 	      st.st_size -= mapsize;
+ 	    } while (mmap (mapped, mapsize, PROT_READ, MAP_FIXED|MAP_PRIVATE,
+@@ -83,7 +83,7 @@
+ 					     off))) > 0)
+     {
+       off += count;
+-      crc = crc32 (crc, buffer, count);
++      crc = __libeu_crc32 (crc, buffer, count);
+     }
+ 
+   *resp = crc;
+--- a/libdwfl/libdwfl_crc32.c
++++ b/libdwfl/libdwfl_crc32.c
+@@ -29,6 +29,6 @@
+ # include <config.h>
+ #endif
+ 
+-#define crc32 attribute_hidden __libdwfl_crc32
++#define __libeu_crc32 attribute_hidden __libdwfl_crc32
+ #include <libdwflP.h>
+ #include "../lib/crc32.c"
+--- a/libdwfl/libdwfl_crc32_file.c
++++ b/libdwfl/libdwfl_crc32_file.c
+@@ -30,6 +30,6 @@
+ #endif
+ 
+ #define crc32_file attribute_hidden __libdwfl_crc32_file
+-#define crc32 __libdwfl_crc32
++#define __libeu_crc32 __libdwfl_crc32
+ #include <libdwflP.h>
+ #include "../lib/crc32_file.c"
+--- a/libelf/libelf_crc32.c
++++ b/libelf/libelf_crc32.c
+@@ -29,6 +29,6 @@
+ # include <config.h>
+ #endif
+ 
+-#define crc32 attribute_hidden __libelf_crc32
++#define __libeu_crc32 attribute_hidden __libelf_crc32
+ #include <libelf.h>
+ #include "../lib/crc32.c"

@@ -1,0 +1,17 @@
+Allow early TF-A PIE self-relocation of read-only errata pointers with LLD.
+
+--- a/make_helpers/cflags.mk
++++ b/make_helpers/cflags.mk
+@@ -224,6 +224,12 @@
+ PIE_LDFLAGS	+=	$(call ld_prefix,-pie)
+ PIE_LDFLAGS	+=	$(call ld_prefix,--no-dynamic-linker)
+ 
++# Early TF-A self-relocation also fixes pointers in read-only errata tables.
++# LLD requires text relocations to be permitted explicitly for these PIEs.
++ifneq ($(filter llvm-clang llvm-lld,$($(ARCH)-ld-id)),)
++PIE_LDFLAGS	+=	$(call ld_prefix,-z notext)
++endif
++
+ ifeq ($(ENABLE_PIE),1)
+ 	ifeq ($(RESET_TO_BL2),1)
+ 		ifneq ($(BL2_IN_XIP_MEM),1)

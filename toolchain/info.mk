@@ -1,5 +1,5 @@
 TARGET_CROSS=
-GCC_VERSION=unknown
+LLVM_VERSION=unknown
 LIBC_TYPE=unknown
 LIBC_URL=unknown
 LIBC_VERSION=unknown

@@ -21,6 +21,10 @@ PKG_CPE_ID:=cpe:/a:kernel:iw
 
 PKG_BUILD_FLAGS:=gc-sections lto
 
+ifeq ($(CONFIG_USE_LLVM_TOOLCHAIN),y)
+  TARGET_LDFLAGS += -Wl,-z,nostart-stop-gc
+endif
+
 include $(INCLUDE_DIR)/package.mk
 
 define Package/iw/Default

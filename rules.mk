@@ -8,7 +8,16 @@ __rules_inc=1
 
 ifeq ($(DUMP),)
   -include $(TOPDIR)/.config
+  ifneq ($(wildcard $(TOPDIR)/.config),)
+    ifneq ($(CONFIG_USE_LLVM_TOOLCHAIN),y)
+      $(error This checkout is LLVM-only and requires a musl .config; run make menuconfig)
+    endif
+  endif
 endif
+LLVM_VERSION:=$(strip $(shell cat $(TOPDIR)/toolchain/llvm/version))
+LLVM_MAJOR:=$(firstword $(subst ., ,$(LLVM_VERSION)))
+LLVM_BINDIR?=/usr/lib/llvm-$(LLVM_MAJOR)/bin
+export LLVM_VERSION LLVM_MAJOR LLVM_BINDIR
 include $(TOPDIR)/include/debug.mk
 include $(TOPDIR)/include/verbose.mk
 
@@ -96,6 +105,7 @@ ARCH_PACKAGES:=$(call qstrip,$(CONFIG_TARGET_ARCH_PACKAGES))
 BOARD:=$(call qstrip,$(CONFIG_TARGET_BOARD))
 SUBTARGET:=$(call qstrip,$(CONFIG_TARGET_SUBTARGET))
 TARGET_OPTIMIZATION:=$(call qstrip,$(CONFIG_TARGET_OPTIMIZATION))
+TARGET_OPTIMIZATION:=$(filter-out -fno-caller-saves,$(TARGET_OPTIMIZATION))
 TARGET_SUFFIX=$(call qstrip,$(CONFIG_TARGET_SUFFIX))
 BUILD_SUFFIX:=$(call qstrip,$(CONFIG_BUILD_SUFFIX))
 SUBDIR:=$(patsubst $(TOPDIR)/%,%,${CURDIR})
@@ -116,13 +126,8 @@ endif
 HOST_FPIC:=-DPIC -fPIC
 
 ARCH_SUFFIX:=$(call qstrip,$(CONFIG_CPU_TYPE))
-GCC_ARCH:=
-
 ifneq ($(ARCH_SUFFIX),)
   ARCH_SUFFIX:=_$(ARCH_SUFFIX)
-endif
-ifneq ($(filter -march=armv%,$(TARGET_OPTIMIZATION)),)
-  GCC_ARCH:=$(patsubst -march=%,%,$(filter -march=armv%,$(TARGET_OPTIMIZATION)))
 endif
 ifdef CONFIG_HAS_SPE_FPU
   TARGET_SUFFIX:=$(TARGET_SUFFIX)spe
@@ -156,28 +161,14 @@ BIN_DIR:=$(OUTPUT_DIR)/targets/$(BOARD)/$(SUBTARGET)
 INCLUDE_DIR:=$(TOPDIR)/include
 SCRIPT_DIR:=$(TOPDIR)/scripts
 BUILD_DIR_BASE:=$(TOPDIR)/build_dir
-ifeq ($(CONFIG_EXTERNAL_TOOLCHAIN),)
-  GCCV:=$(call qstrip,$(CONFIG_GCC_VERSION))
-  LIBC:=$(call qstrip,$(CONFIG_LIBC))
-  REAL_GNU_TARGET_NAME=$(OPTIMIZE_FOR_CPU)-openwrt-linux$(if $(TARGET_SUFFIX),-$(TARGET_SUFFIX))
-  GNU_TARGET_NAME=$(OPTIMIZE_FOR_CPU)-openwrt-linux
-  DIR_SUFFIX:=_$(LIBC)$(if $(CONFIG_arm),_eabi)
-  BIN_DIR:=$(BIN_DIR)$(if $(CONFIG_USE_MUSL),,-$(LIBC))
-  TARGET_DIR_NAME = target-$(ARCH)$(ARCH_SUFFIX)$(DIR_SUFFIX)$(if $(BUILD_SUFFIX),_$(BUILD_SUFFIX))
-  TOOLCHAIN_DIR_NAME = toolchain-$(ARCH)$(ARCH_SUFFIX)_gcc-$(GCCV)$(DIR_SUFFIX)
-else
-  ifeq ($(CONFIG_NATIVE_TOOLCHAIN),)
-    GNU_TARGET_NAME=$(call qstrip,$(CONFIG_TARGET_NAME))
-  else
-    GNU_TARGET_NAME=$(shell gcc -dumpmachine)
-  endif
-  REAL_GNU_TARGET_NAME=$(GNU_TARGET_NAME)
-  LIBC:=$(call qstrip,$(CONFIG_LIBC))
-  TARGET_DIR_NAME:=target-$(GNU_TARGET_NAME)_$(LIBC)$(if $(BUILD_SUFFIX),_$(BUILD_SUFFIX))
-  TOOLCHAIN_DIR_NAME:=toolchain-$(GNU_TARGET_NAME)
-endif
+LIBC:=musl
+REAL_GNU_TARGET_NAME=$(OPTIMIZE_FOR_CPU)-openwrt-linux-musl
+GNU_TARGET_NAME=$(OPTIMIZE_FOR_CPU)-openwrt-linux
+DIR_SUFFIX:=_musl
+TARGET_DIR_NAME = target-$(ARCH)$(ARCH_SUFFIX)$(DIR_SUFFIX)$(if $(BUILD_SUFFIX),_$(BUILD_SUFFIX))
+TOOLCHAIN_DIR_NAME = toolchain-$(ARCH)$(ARCH_SUFFIX)_llvm-$(LLVM_VERSION)$(DIR_SUFFIX)
 
-ifeq ($(or $(CONFIG_EXTERNAL_TOOLCHAIN),$(CONFIG_TARGET_uml)),)
+ifeq ($(CONFIG_TARGET_uml),)
   iremap = -f$(if $(CONFIG_REPRODUCIBLE_DEBUG_INFO),file,macro)-prefix-map=$(1)=$(2)
 endif
 
@@ -255,48 +246,27 @@ STAGING_DIR_HOST:=$(abspath $(STAGING_DIR)/../host)
 STAGING_DIR_HOSTPKG:=$(abspath $(STAGING_DIR)/../hostpkg)
 
 TARGET_PATH:=$(subst $(space),:,$(filter-out .,$(filter-out ./,$(subst :,$(space),$(PATH)))))
+TARGET_PATH:=$(LLVM_BINDIR):$(TARGET_PATH)
 TARGET_INIT_PATH:=$(call qstrip,$(CONFIG_TARGET_INIT_PATH))
 TARGET_INIT_PATH:=$(if $(TARGET_INIT_PATH),$(TARGET_INIT_PATH),/usr/sbin:/sbin:/usr/bin:/bin)
-TARGET_CFLAGS:=$(TARGET_OPTIMIZATION)$(if $(CONFIG_DEBUG), -g3) $(call qstrip,$(CONFIG_EXTRA_OPTIMIZATION))
+TARGET_CFLAGS:=$(TARGET_OPTIMIZATION)$(if $(CONFIG_DEBUG), -g3) $(filter-out -fno-caller-saves,$(call qstrip,$(CONFIG_EXTRA_OPTIMIZATION)))
 TARGET_CXXFLAGS = $(TARGET_CFLAGS)
 TARGET_ASFLAGS_DEFAULT = $(TARGET_CFLAGS)
 TARGET_ASFLAGS = $(TARGET_ASFLAGS_DEFAULT)
-ifneq ($(CONFIG_EXTERNAL_TOOLCHAIN),)
-LIBGCC_S_PATH=$(realpath $(wildcard $(call qstrip,$(CONFIG_LIBGCC_ROOT_DIR))/$(call qstrip,$(CONFIG_LIBGCC_FILE_SPEC))))
-LIBGCC_S=$(if $(LIBGCC_S_PATH),-L$(dir $(LIBGCC_S_PATH)) -lgcc_s)
-LIBGCC_A=$(realpath $(lastword $(wildcard $(dir $(LIBGCC_S_PATH))/gcc/*/*/libgcc.a)))
-else
-LIBGCC_A=$(lastword $(wildcard $(TOOLCHAIN_DIR)/lib/gcc/*/*/libgcc.a))
-LIBGCC_S=$(if $(wildcard $(TOOLCHAIN_DIR)/lib/libgcc_s.so),-L$(TOOLCHAIN_DIR)/lib -lgcc_s,$(LIBGCC_A))
-endif
+LIBGCC_A=$(TOOLCHAIN_DIR)/llvm-resource/lib/linux/libclang_rt.builtins-$(ARCH).a
+LIBGCC_S=$(LIBGCC_A)
 
 ifeq ($(CONFIG_ARCH_64BIT),y)
   LIB_SUFFIX:=64
 endif
 
 ifndef DUMP
-  ifeq ($(CONFIG_EXTERNAL_TOOLCHAIN),)
-    -include $(TOOLCHAIN_DIR)/info.mk
-    export GCC_HONOUR_COPTS:=0
-    TARGET_CROSS:=$(if $(TARGET_CROSS),$(TARGET_CROSS),$(OPTIMIZE_FOR_CPU)-openwrt-linux$(if $(TARGET_SUFFIX),-$(TARGET_SUFFIX))-)
-    TOOLCHAIN_ROOT_DIR:=$(TOPDIR)/staging_dir/$(TOOLCHAIN_DIR_NAME)
-    TOOLCHAIN_BIN_DIRS:=$(TOOLCHAIN_ROOT_DIR)/bin
-    TOOLCHAIN_INC_DIRS:=$(TOOLCHAIN_ROOT_DIR)/usr/include $(TOOLCHAIN_ROOT_DIR)/include
-    TOOLCHAIN_LIB_DIRS:=$(TOOLCHAIN_ROOT_DIR)/usr/lib $(TOOLCHAIN_ROOT_DIR)/lib
-    TARGET_CFLAGS+= -fhonour-copts
-    ifeq ($(CONFIG_USE_MUSL),y)
-      TOOLCHAIN_INC_DIRS+= $(TOOLCHAIN_DIR)/include/fortify
-    endif
-  else
-    ifeq ($(CONFIG_NATIVE_TOOLCHAIN),)
-      -include $(TOOLCHAIN_DIR)/info.mk
-      TARGET_CROSS:=$(call qstrip,$(CONFIG_TOOLCHAIN_PREFIX))
-      TOOLCHAIN_ROOT_DIR:=$(call qstrip,$(CONFIG_TOOLCHAIN_ROOT))
-      TOOLCHAIN_BIN_DIRS:=$(patsubst ./%,$(TOOLCHAIN_ROOT_DIR)/%,$(call qstrip,$(CONFIG_TOOLCHAIN_BIN_PATH)))
-      TOOLCHAIN_INC_DIRS:=$(patsubst ./%,$(TOOLCHAIN_ROOT_DIR)/%,$(call qstrip,$(CONFIG_TOOLCHAIN_INC_PATH)))
-      TOOLCHAIN_LIB_DIRS:=$(patsubst ./%,$(TOOLCHAIN_ROOT_DIR)/%,$(call qstrip,$(CONFIG_TOOLCHAIN_LIB_PATH)))
-    endif
-  endif
+  -include $(TOOLCHAIN_DIR)/info.mk
+  TARGET_CROSS:=$(if $(TARGET_CROSS),$(TARGET_CROSS),$(OPTIMIZE_FOR_CPU)-openwrt-linux$(if $(TARGET_SUFFIX),-$(TARGET_SUFFIX))-)
+  TOOLCHAIN_ROOT_DIR:=$(TOPDIR)/staging_dir/$(TOOLCHAIN_DIR_NAME)
+  TOOLCHAIN_BIN_DIRS:=$(TOOLCHAIN_ROOT_DIR)/bin
+  TOOLCHAIN_INC_DIRS:=$(TOOLCHAIN_ROOT_DIR)/usr/include $(TOOLCHAIN_ROOT_DIR)/include $(TOOLCHAIN_ROOT_DIR)/include/fortify
+  TOOLCHAIN_LIB_DIRS:=$(TOOLCHAIN_ROOT_DIR)/usr/lib $(TOOLCHAIN_ROOT_DIR)/lib
   ifneq ($(TOOLCHAIN_BIN_DIRS),)
     TARGET_PATH:=$(subst $(space),:,$(TOOLCHAIN_BIN_DIRS)):$(TARGET_PATH)
   endif
@@ -308,8 +278,15 @@ ifndef DUMP
   endif
 endif
 
-TARGET_LINKER?=bfd
+TARGET_LINKER:=lld
 TARGET_LDFLAGS+= -fuse-ld=$(TARGET_LINKER)
+
+# Clang's target sysroot does not include staged package paths automatically.
+# Add them explicitly for target package builds.
+ifneq ($(IS_PACKAGE_BUILD),)
+  TARGET_CPPFLAGS+= -isystem $(STAGING_DIR)/usr/include
+  TARGET_LDFLAGS+= -L$(STAGING_DIR)/usr/lib -L$(STAGING_DIR)/lib
+endif
 
 TARGET_PATH_PKG:=$(STAGING_DIR)/host/bin:$(STAGING_DIR_HOSTPKG)/bin:$(TARGET_PATH)
 
@@ -343,8 +320,9 @@ HOST_EXTRA_CXXFLAGS:=$(call qstrip,$(CONFIG_HOST_EXTRA_CXXFLAGS))
 HOST_EXTRA_CPPFLAGS:=$(call qstrip,$(CONFIG_HOST_EXTRA_CPPFLAGS))
 HOST_EXTRA_LDFLAGS:=$(call qstrip,$(CONFIG_HOST_EXTRA_LDFLAGS))
 
-HOSTCC:=$(STAGING_DIR_HOST)/bin/gcc
-HOSTCXX:=$(STAGING_DIR_HOST)/bin/g++
+export LLVM_PACKAGE_SYSROOT:=$(STAGING_DIR)
+HOSTCC:=$(SCRIPT_DIR)/llvm/host-cc
+HOSTCXX:=$(SCRIPT_DIR)/llvm/host-cxx
 HOST_CPPFLAGS:=$(strip -I$(STAGING_DIR_HOST)/include $(if $(IS_PACKAGE_BUILD),-I$(STAGING_DIR_HOSTPKG)/include -I$(STAGING_DIR)/host/include) $(HOST_EXTRA_CPPFLAGS))
 HOST_CFLAGS:=$(strip $(HOST_FLAGS_OPT) $(HOST_EXTRA_CFLAGS) $(HOST_CPPFLAGS) $(HOST_FLAGS_STRIP))
 HOST_CXXFLAGS:=$(strip $(HOST_CFLAGS) $(HOST_EXTRA_CXXFLAGS))
@@ -356,12 +334,12 @@ BUILD_KEY_APK_PUB=$(TOPDIR)/public-key.pem
 
 FAKEROOT:=$(STAGING_DIR_HOST)/bin/fakeroot
 
-TARGET_AR:=$(TARGET_CROSS)gcc-ar
-TARGET_RANLIB:=$(TARGET_CROSS)gcc-ranlib
-TARGET_NM:=$(TARGET_CROSS)gcc-nm
-TARGET_CC:=$(TARGET_CROSS)gcc
-TARGET_CXX:=$(TARGET_CROSS)g++
-TARGET_LD:=$(TARGET_CROSS)ld.$(TARGET_LINKER)
+TARGET_AR:=$(TARGET_CROSS)ar
+TARGET_RANLIB:=$(TARGET_CROSS)ranlib
+TARGET_NM:=$(TARGET_CROSS)nm
+TARGET_CC:=$(TARGET_CROSS)clang
+TARGET_CXX:=$(TARGET_CROSS)clang++
+TARGET_LD:=$(TARGET_CROSS)ld.lld
 KPATCH:=$(SCRIPT_DIR)/patch-kernel.sh
 CACHE_RUN:=$(SCRIPT_DIR)/cache-run.sh
 FILECMD:=$(STAGING_DIR_HOST)/bin/file
@@ -404,8 +382,8 @@ export HOSTCC_NOCACHE
 export HOSTCXX_NOCACHE
 
 # A new host compiler behind an unchanged name changes what a configure check
-# answers, and autoconf does not detect that. gcc 14 turned an implicit function
-# declaration into an error, which changed many of those answers. The configure
+# answers, and autoconf does not detect that. Clang can change diagnostics for
+# implicit function declarations, which changes configure answers. The configure
 # cache of a host package is therefore keyed on the compiler as well. prereq
 # builds mkhash and links the compiler into staging_dir, so both exist by the
 # time a configure recipe asks for this.
@@ -421,13 +399,15 @@ ifneq ($(CONFIG_CCACHE),)
   export CCACHE_DIR:=$(if $(call qstrip,$(CONFIG_CCACHE_DIR)),$(call qstrip,$(CONFIG_CCACHE_DIR)),$(TOPDIR)/.ccache)
 endif
 
+# Keep GCC as a compatibility variable for a few upstream packages; it always
+# resolves to the Clang wrapper in this branch.
 TARGET_CONFIGURE_OPTS = \
   AR="$(TARGET_AR)" \
   AS="$(TARGET_CC) -c $(TARGET_ASFLAGS)" \
   LD="$(TARGET_LD)" \
-  NM="$(TARGET_NM)" \
-  CC="$(TARGET_CC)" \
-  GCC="$(TARGET_CC)" \
+	NM="$(TARGET_NM)" \
+	CC="$(TARGET_CC)" \
+	GCC="$(TARGET_CC)" \
   CXX="$(TARGET_CXX)" \
   RANLIB="$(TARGET_RANLIB)" \
   STRIP=$(TARGET_CROSS)strip \

@@ -34,7 +34,7 @@ endef
 
 TARGET_CFLAGS += \
 	-I$(STAGING_DIR)/usr/include \
-	-Wno-error=maybe-uninitialized
+	$(if $(CONFIG_USE_LLVM_TOOLCHAIN),-Wno-error=uninitialized,-Wno-error=maybe-uninitialized)
 
 CMAKE_OPTIONS += \
 	-DDEBUG=1

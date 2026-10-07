@@ -1,0 +1,60 @@
+A C11 label must precede a statement. Preserve scopes with empty statements.
+
+--- a/src/dhcpv6.c
++++ b/src/dhcpv6.c
+@@ -1129,7 +1129,7 @@
+ 				serverid_ok = true;
+ 			break;
+ 
+-		case DHCPV6_OPT_AUTH:
++		case DHCPV6_OPT_AUTH:;
+ 			struct dhcpv6_auth *r = (void*)&odata[-DHCPV6_OPT_HDR_SIZE];
+ 			if (auth_present) {
+ 				options_valid = false;
+@@ -1567,7 +1567,7 @@
+ 					odhcp6c_add_state(STATE_SNTP_IP, odata, olen);
+ 				break;
+ 
+-			case DHCPV6_OPT_NTP_SERVER:
++			case DHCPV6_OPT_NTP_SERVER:;
+ 				uint16_t stype, slen;
+ 				uint8_t *sdata;
+ 				// Test status and bail if error
+@@ -1594,7 +1594,7 @@
+ 					refresh = ntohl_unaligned(odata);
+ 				break;
+ 
+-			case DHCPV6_OPT_AUTH:
++			case DHCPV6_OPT_AUTH:;
+ 				struct dhcpv6_auth *r = (void*)&odata[-DHCPV6_OPT_HDR_SIZE];
+ 				if (auth_protocol == AUTH_PROT_RKAP && olen == 28) {
+ 					struct dhcpv6_auth_reconfigure *rkap = (void*)r->data;
+@@ -1633,7 +1633,7 @@
+ 				odhcp6c_add_state(STATE_S46_MAPT, odata, olen);
+ 				break;
+ 
+-			case DHCPV6_OPT_S46_CONT_MAPE:
++			case DHCPV6_OPT_S46_CONT_MAPE:;
+ 				size_t mape_len;
+ 				odhcp6c_get_state(STATE_S46_MAPE, &mape_len);
+ 				if (mape_len == 0)
+@@ -1644,7 +1644,7 @@
+ 				odhcp6c_add_state(STATE_S46_LW, odata, olen);
+ 				break;
+ 
+-			case DHCPV6_OPT_CAPTIVE_PORTAL: /* RFC8910 §2.2 */
++			case DHCPV6_OPT_CAPTIVE_PORTAL:; /* RFC8910 §2.2 */
+ 				size_t ref_len = sizeof(URN_IETF_CAPT_PORT_UNRESTR) - 1;
+ 				/* RFC8910 §2:
+ 				 * Networks with no captive portals may explicitly indicate this
+--- a/src/ra.c
++++ b/src/ra.c
+@@ -593,7 +593,7 @@
+ 		// Evaluate options
+ 		icmpv6_for_each_option(opt, &adv[1], &buf[len]) {
+ 			switch(opt->type) {
+-			case ND_OPT_MTU:
++			case ND_OPT_MTU:;
+ 				uint32_t *mtu = (uint32_t*)&opt->data[2];
+ 				changed |= ra_set_mtu(ntohl(*mtu));
+ 				break;

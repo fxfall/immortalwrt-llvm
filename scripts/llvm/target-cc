@@ -1,0 +1,65 @@
+#!/bin/sh
+set -eu
+llvm_bin=${LLVM_BINDIR:-/usr/lib/llvm-23/bin}
+sysroot=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+unwind=none
+[ ! -e "$sysroot/usr/lib/libunwind.so" ] || unwind=libunwind
+case ${0##*/} in *g++|*clang++|*c++) compiler=clang++ ;; *) compiler=clang ;; esac
+wrapper=${0##*/}
+case $wrapper in
+    *-clang++) target=${wrapper%-clang++} ;;
+    *-clang) target=${wrapper%-clang} ;;
+    *-gcc) target=${wrapper%-gcc} ;;
+    *-g++) target=${wrapper%-g++} ;;
+    *-cc) target=${wrapper%-cc} ;;
+    *-c++) target=${wrapper%-c++} ;;
+    *-cpp) target=${wrapper%-cpp} ;;
+    *) echo "unsupported target compiler wrapper: $wrapper" >&2; exit 2 ;;
+esac
+case $wrapper in *-cpp) set -- -E "$@" ;; esac
+for arg in "$@"; do
+    case $arg in
+        -print-sysroot|--print-sysroot) printf '%s\n' "$sysroot"; exit 0 ;;
+    esac
+done
+link=yes
+nostdinc=no
+nostdlib=no
+for arg in "$@"; do
+    case "$arg" in -c|-E|-S|-fsyntax-only|-M|-MM|--version|-dump*|-print*) link=no ;; -nostdinc++) nostdinc=yes ;; -nostdlib++) nostdlib=yes ;; esac
+done
+# Preserve LLVM integrated assembly, even for legacy U-Boot probes.
+# Linker options in package CFLAGS have no effect on compile-only commands.
+remaining=$#
+while [ "$remaining" -gt 0 ]; do
+    arg=$1
+    shift
+    remaining=$((remaining - 1))
+    case "$arg" in
+        -no-integrated-as|-fno-integrated-as) set -- "$@" -fintegrated-as ;;
+        -Wl,*) [ "$link" = no ] || set -- "$@" "$arg" ;;
+        *) set -- "$@" "$arg" ;;
+    esac
+done
+if [ "$compiler" = clang++ ]; then
+    if { [ "$link" = no ] && [ "$nostdinc" = yes ]; } ||
+       { [ "$link" = yes ] && [ "$nostdlib" = yes ]; }; then :
+    else set -- -stdlib=libc++ -nostdinc++ -isystem "$sysroot/usr/include/c++/v1" "$@"; fi
+fi
+if [ "$link" = yes ]; then
+    # Some build systems replace LDFLAGS, so add the target package sysroot.
+    toolchain_name=${sysroot##*/}
+    target_name=${toolchain_name%%_llvm-*}
+    target_name=${target_name#toolchain-}
+    package_sysroot=${LLVM_PACKAGE_SYSROOT:-${sysroot%/*}/target-${target_name}_musl}
+    set -- --unwindlib="$unwind" -fuse-ld=lld \
+        -L"$package_sysroot/usr/lib" -L"$package_sysroot/lib" "$@"
+fi
+if [ -n "${LLVM_AUDIT_LOG:-}" ]; then
+  printf 'target\t%s\t%s\n' "$llvm_bin/$compiler" "$*" >> "$LLVM_AUDIT_LOG"
+fi
+set -- --target="$target" --sysroot="$sysroot" -resource-dir="$sysroot/llvm-resource" "$@"
+if [ "$link" = yes ]; then
+    set -- "$@" --rtlib=compiler-rt
+fi
+exec "$llvm_bin/$compiler" "$@"

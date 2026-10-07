@@ -13,7 +13,7 @@ include $(INCLUDE_DIR)/version.mk
 
 override MAKEFLAGS=
 
-TOOLCHAIN_NAME:=$(VERSION_DIST_SANITIZED)-toolchain-$(if $(CONFIG_VERSION_FILENAMES),$(VERSION_NUMBER)-)$(BOARD)$(if $(SUBTARGET),-$(SUBTARGET))_gcc-$(GCCV)$(DIR_SUFFIX).$(HOST_OS)-$(HOST_ARCH)
+TOOLCHAIN_NAME:=$(VERSION_DIST_SANITIZED)-toolchain-$(if $(CONFIG_VERSION_FILENAMES),$(VERSION_NUMBER)-)$(BOARD)$(if $(SUBTARGET),-$(SUBTARGET))_llvm-$(LLVM_VERSION)$(DIR_SUFFIX).$(HOST_OS)-$(HOST_ARCH)
 TOOLCHAIN_BUILD_DIR:=$(BUILD_DIR)/$(TOOLCHAIN_NAME)
 EXCLUDE_DIRS:= \
 	*/initial \
@@ -24,13 +24,13 @@ EXCLUDE_DIRS:= \
 
 all: compile
 
-TOOLCHAIN_PREFIX:=$(TOOLCHAIN_BUILD_DIR)/toolchain-$(ARCH)$(ARCH_SUFFIX)_gcc-$(GCCV)$(DIR_SUFFIX)
+TOOLCHAIN_PREFIX:=$(TOOLCHAIN_BUILD_DIR)/toolchain-$(ARCH)$(ARCH_SUFFIX)_llvm-$(LLVM_VERSION)$(DIR_SUFFIX)
 
 $(BIN_DIR)/$(TOOLCHAIN_NAME).tar.zst: clean
 	mkdir -p $(TOOLCHAIN_BUILD_DIR)
 	$(TAR) -cf - -C $(TOPDIR)/staging_dir/  \
 	       $(foreach exclude,$(EXCLUDE_DIRS),--exclude="$(exclude)") \
-	       toolchain-$(ARCH)$(ARCH_SUFFIX)_gcc-$(GCCV)$(DIR_SUFFIX) | \
+	       toolchain-$(ARCH)$(ARCH_SUFFIX)_llvm-$(LLVM_VERSION)$(DIR_SUFFIX) | \
 	       $(TAR) -xf - -C $(TOOLCHAIN_BUILD_DIR)
 
 	$(CP) \

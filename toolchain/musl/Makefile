@@ -9,7 +9,8 @@ HOST_BUILD_PARALLEL:=1
 
 MUSL_MAKEOPTS = -C $(HOST_BUILD_DIR) \
 	DESTDIR="$(TOOLCHAIN_DIR)/" \
-	LIBCC="$(shell $(TARGET_CC) -print-libgcc-file-name)"
+	PATH="$(TOOLCHAIN_DIR)/bin:$(PATH)" \
+	LIBCC="$(TOOLCHAIN_DIR)/llvm-resource/lib/linux/libclang_rt.builtins-$(ARCH).a"
 
 define Host/SetToolchainInfo
 	$(SED) 's,^\(LIBC_TYPE\)=.*,\1=$(PKG_NAME),' $(TOOLCHAIN_DIR)/info.mk
@@ -19,6 +20,8 @@ define Host/SetToolchainInfo
 endef
 
 define Host/Compile
+	+$(MAKE) $(HOST_JOBS) $(MUSL_MAKEOPTS) install-headers
+	$(SCRIPT_DIR)/llvm/build-bootstrap-builtins.sh "$(DL_DIR)/llvm-project-$(strip $(shell cat $(TOPDIR)/toolchain/llvm/version)).src.tar.xz" "$(BUILD_DIR_TOOLCHAIN)/llvm-bootstrap-$(strip $(shell cat $(TOPDIR)/toolchain/llvm/version))" "$(TOOLCHAIN_DIR)" "$(LLVM_BINDIR)" "$(TARGET_CROSS)" "$(TARGET_OPTIMIZATION)" "$(STAGING_DIR_HOST)/bin/cmake" "$(STAGING_DIR_HOST)/bin/ninja"
 	+$(MAKE) $(HOST_JOBS) $(MUSL_MAKEOPTS) all
 endef
 

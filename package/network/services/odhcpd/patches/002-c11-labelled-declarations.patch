@@ -1,0 +1,70 @@
+Keep declarations following case labels and goto labels valid in C11 while
+preserving their existing scopes and control flow.
+
+--- a/src/odhcpd.c
++++ b/src/odhcpd.c
+@@ -112,6 +112,6 @@
+ 	while ((opt = getopt(argc, argv, "c:l:fuh")) != -1) {
+ 		switch (opt) {
+-		case 'c':
++		case 'c': {
+ 			struct stat sb;
+ 			char *path;
+ 
+@@ -127,6 +127,7 @@
+ 			config.uci_cfgdir = path;
+ 			break;
+ 
++		}
+ 		case 'l':
+ 			config.log_level = (atoi(optarg) & LOG_PRIMASK);
+ 			config.log_level_cmdline = true;
+--- a/src/config.c
++++ b/src/config.c
+@@ -940,7 +940,7 @@
+ 			continue;
+ 
+ 		switch (svc_key) {
+-		case DNR_SVC_MANDATORY:
++		case DNR_SVC_MANDATORY:;
+ 			uint16_t mkeys[DNR_SVC_MAX];
+ 
+ 			svc_val_len = 0;
+@@ -978,7 +978,7 @@
+ 			dnr.svc_len += 4 + svc_val_len;
+ 			break;
+ 
+-		case DNR_SVC_ALPN:
++		case DNR_SVC_ALPN:;
+ 			size_t len_off;
+ 
+ 			tmp = realloc(dnr.svc, dnr.svc_len + 4);
+@@ -1016,7 +1016,7 @@
+ 			memcpy(dnr.svc + len_off, &svc_val_len_be, sizeof(svc_val_len_be));
+ 			break;
+ 
+-		case DNR_SVC_PORT:
++		case DNR_SVC_PORT:;
+ 			uint16_t port;
+ 
+ 			if (sscanf(svc_val_str, "%" SCNu16, &port) != 1) {
+@@ -1074,7 +1074,7 @@
+ 		}
+ 	}
+ 
+-done:
++done:;
+ 	struct dnr_options *tmp;
+ 	tmp = realloc(iface->dnr, (iface->dnr_cnt + 1) * sizeof(dnr));
+ 	if (!tmp)
+--- a/src/dhcpv6-ia.c
++++ b/src/dhcpv6-ia.c
+@@ -1182,7 +1182,7 @@
+ 			a = NULL;
+ 		}
+ 
+-proceed:
++proceed:;
+ 		/* Generic message handling */
+ 		uint16_t status = DHCPV6_STATUS_OK;
+ 		bool assigned = false;

@@ -1,0 +1,64 @@
+Preserve fortified variadic calls with Clang object-size overloads and va_list.
+
+--- a/include/stdio.h
++++ b/include/stdio.h
+@@ -92,6 +92,50 @@
+ 	return __r;
+ }
+ 
++#ifdef __clang__
++/* The hidden object size preserves call-site bounds for variadic forwarding.
++ * Clang has no GCC __builtin_va_arg_pack. */
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wformat-nonliteral"
++static __inline__ __attribute__((__overloadable__, __always_inline__,
++                                __artificial__, __format__(__printf__, 3, 4)))
++int snprintf(char *const __s __attribute__((__pass_object_size__(0))),
++             size_t __n, const char *__f, ...)
++{
++	size_t __b = __builtin_object_size(__s, 0);
++	__builtin_va_list __v;
++	int __r;
++
++	if (__n > __b)
++		__builtin_trap();
++	__builtin_va_start(__v, __f);
++	__r = __orig_vsnprintf(__s, __n, __f, __v);
++	__builtin_va_end(__v);
++	return __r;
++}
++
++static __inline__ __attribute__((__overloadable__, __always_inline__,
++                                __artificial__, __format__(__printf__, 2, 3)))
++int sprintf(char *const __s __attribute__((__pass_object_size__(0))),
++            const char *__f, ...)
++{
++	size_t __b = __builtin_object_size(__s, 0);
++	__builtin_va_list __v;
++	int __r;
++
++	__builtin_va_start(__v, __f);
++	if (__b != (size_t)-1) {
++		__r = __orig_vsnprintf(__s, __b, __f, __v);
++		if (__r != -1 && (size_t)__r >= __b)
++			__builtin_trap();
++	} else {
++		__r = __orig_vsprintf(__s, __f, __v);
++	}
++	__builtin_va_end(__v);
++	return __r;
++}
++#pragma clang diagnostic pop
++#else
+ _FORTIFY_FN(snprintf) int snprintf(char *__s, size_t __n, const char *__f, ...)
+ {
+ 	size_t __b = __builtin_object_size(__s, 0);
+@@ -122,6 +166,8 @@
+ #pragma GCC diagnostic pop
+ }
+ 
++#endif
++
+ #ifdef __cplusplus
+ }
+ #endif

@@ -25,17 +25,13 @@ ifeq ($(DUMP),1)
   LINUX_VERSION?=<LINUX_VERSION>
   LINUX_VERMAGIC?=<LINUX_VERMAGIC>
 else
-  ifeq ($(CONFIG_EXTERNAL_TOOLCHAIN),)
-    export GCC_HONOUR_COPTS=s
-  endif
-
   LINUX_KMOD_SUFFIX=ko
 
   ifneq (,$(findstring uml,$(BOARD)))
     KERNEL_CC?=$(HOSTCC)
     KERNEL_CROSS?=
   else
-    KERNEL_CC?=$(TARGET_CC)
+    KERNEL_CC?=$(TOOLCHAIN_DIR)/bin/$(TARGET_CROSS)clang
     KERNEL_CROSS?=$(TARGET_CROSS)
   endif
 
@@ -101,7 +97,7 @@ endif
 KERNEL_MAKE = $(MAKE) $(KERNEL_MAKEOPTS)
 
 KERNEL_MAKE_FLAGS = \
-	KCFLAGS="$(call iremap,$(BUILD_DIR),$(notdir $(BUILD_DIR))) $(IREMAP_STAGING_DIR) $(IREMAP_TOOLCHAIN_DIR) $(filter-out -fno-plt,$(call qstrip,$(CONFIG_EXTRA_OPTIMIZATION))) $(call qstrip,$(CONFIG_KERNEL_CFLAGS))" \
+	KCFLAGS="$(call iremap,$(BUILD_DIR),$(notdir $(BUILD_DIR))) $(IREMAP_STAGING_DIR) $(IREMAP_TOOLCHAIN_DIR) $(filter-out -fno-plt -fno-caller-saves,$(call qstrip,$(CONFIG_EXTRA_OPTIMIZATION))) $(filter-out -fno-caller-saves,$(call qstrip,$(CONFIG_KERNEL_CFLAGS)))" \
 	KAFLAGS="$(call iremap,$(BUILD_DIR),$(notdir $(BUILD_DIR))) $(IREMAP_STAGING_DIR) $(IREMAP_TOOLCHAIN_DIR)" \
 	HOSTCFLAGS="$(HOST_CFLAGS) -Wall -Wmissing-prototypes -Wstrict-prototypes" \
 	CROSS_COMPILE="$(KERNEL_CROSS)" \
@@ -121,6 +117,10 @@ KERNEL_MAKE_FLAGS = \
 ifneq (,$(KERNEL_CC))
   KERNEL_MAKE_FLAGS += CC="$(KERNEL_CC)"
 endif
+
+KERNEL_MAKE_FLAGS += PATH="$(TARGET_PATH)" LLVM=$(LLVM_BINDIR)/ LLVM_IAS=1 \
+	HOSTCC="$(HOSTCC)" HOSTCXX="$(HOSTCXX)" \
+	HOSTLDFLAGS="$(HOST_LDFLAGS)" LD="$(TOOLCHAIN_DIR)/bin/$(TARGET_CROSS)ld.lld"
 
 ifeq ($(HOST_OS),Darwin)
   KERNEL_MAKE_FLAGS += MACOSX_DEPLOYMENT_TARGET="$(shell sw_vers -productVersion)"

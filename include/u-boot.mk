@@ -47,7 +47,6 @@ ifdef UBOOT_USE_INTREE_DTC
     swig -version))
 endif
 
-export GCC_HONOUR_COPTS=s
 
 define Package/u-boot/install/default
 	$(CP) $(patsubst %,$(PKG_BUILD_DIR)/%,$(UBOOT_IMAGE)) $(1)/

@@ -24,7 +24,6 @@ PKG_LICENSE_FILES:=docs/license.rst
 
 PKG_BUILD_PARALLEL:=1
 
-export GCC_HONOUR_COPTS=s
 
 define Package/trusted-firmware-a/install/default
 	$(CP) $(patsubst %,$(PKG_BUILD_DIR)/build/$(PLAT)/release/%,$(TFA_IMAGE)) $(1)/

@@ -1,0 +1,45 @@
+Allow the standard C++ ABI demangler from libc++abi as well as libstdc++.
+Keep library selection local to the existing demangler users.
+
+--- a/configure.ac
++++ b/configure.ac
+@@ -555,14 +555,20 @@
+ AS_HELP_STRING([--disable-demangler],
+ 	       [Disable libstdc++ demangle support]),
+ 	       [], [enable_demangler=yes])
+-AS_IF([test "x$enable_demangler" = xyes],
+-AC_CHECK_LIB([stdc++], [__cxa_demangle], [dnl
+-AC_DEFINE([USE_DEMANGLE], [1], [Defined if demangling is enabled])])
+-AM_CONDITIONAL(DEMANGLE, test "x$ac_cv_lib_stdcpp___cxa_demangle" = "xyes")
+-AS_IF([test "x$ac_cv_lib_stdcpp___cxa_demangle" = "xyes"],
+-      [enable_demangler=yes],
+-      [AC_MSG_ERROR([[__cxa_demangle not found in libstdc++, use --disable-demangler to disable demangler support.]])]),
+-AM_CONDITIONAL(DEMANGLE, false))
++AS_IF([test "x$enable_demangler" = xyes], [
++saved_LIBS="$LIBS"
++AC_SEARCH_LIBS([__cxa_demangle], [stdc++ c++abi], [
++AC_DEFINE([USE_DEMANGLE], [1], [Defined if demangling is enabled])
++AS_CASE(["$ac_cv_search___cxa_demangle"],
++        ["none required"], [DEMANGLE_LIBS=""],
++        [DEMANGLE_LIBS="$ac_cv_search___cxa_demangle"])
++], [
++AC_MSG_ERROR([[__cxa_demangle not found in a C++ ABI library, use --disable-demangler to disable demangler support.]])
++])
++LIBS="$saved_LIBS"
++])
++AC_SUBST([DEMANGLE_LIBS])
++AM_CONDITIONAL(DEMANGLE, test "x$enable_demangler" = "xyes")
+ 
+ AC_ARG_ENABLE([textrelcheck],
+ AS_HELP_STRING([--disable-textrelcheck],
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -88,7 +88,7 @@
+ libeu = ../lib/libeu.a
+ 
+ if DEMANGLE
+-demanglelib = -lstdc++
++demanglelib = @DEMANGLE_LIBS@
+ endif
+ 
+ # Bad, bad stack usage...

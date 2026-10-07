@@ -1,0 +1,13 @@
+Declare the printf-style logging contract so compilers can check calls.
+
+--- a/src/odhcpd.h
++++ b/src/odhcpd.h
+@@ -92,7 +92,7 @@
+ extern struct config config;
+ extern struct sys_conf sys_conf;
+ 
+-void __iflog(int lvl, const char *fmt, ...);
++void __iflog(int lvl, const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+ #define debug(fmt, ...) __iflog(LOG_DEBUG, fmt __VA_OPT__(, ) __VA_ARGS__)
+ #define info(fmt, ...) __iflog(LOG_INFO, fmt __VA_OPT__(, ) __VA_ARGS__)
+ #define notice(fmt, ...) __iflog(LOG_NOTICE, fmt __VA_OPT__(, ) __VA_ARGS__)

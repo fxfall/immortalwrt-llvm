@@ -1,0 +1,34 @@
+#!/bin/sh
+set -eu
+llvm_bin=${LLVM_BINDIR:-/usr/lib/llvm-23/bin}
+case ${0##*/} in *++|*cxx) compiler=clang++ ;; *) compiler=clang ;; esac
+case ${0##*/} in *cpp) set -- -E "$@" ;; esac
+link=yes
+nostdinc=no
+nostdlib=no
+for arg in "$@"; do
+    case "$arg" in -c|-E|-S|-fsyntax-only|-M|-MM|--version|-dump*|-print*) link=no ;; -nostdinc++) nostdinc=yes ;; -nostdlib++) nostdlib=yes ;; esac
+done
+# Preserve LLVM integrated assembly, even for legacy U-Boot probes.
+# Linker options in package CFLAGS have no effect on compile-only commands.
+remaining=$#
+while [ "$remaining" -gt 0 ]; do
+    arg=$1
+    shift
+    remaining=$((remaining - 1))
+    case "$arg" in
+        -no-integrated-as|-fno-integrated-as) set -- "$@" -fintegrated-as ;;
+        -Wl,*) [ "$link" = no ] || set -- "$@" "$arg" ;;
+        *) set -- "$@" "$arg" ;;
+    esac
+done
+if [ "$compiler" = clang++ ]; then
+    if { [ "$link" = no ] && [ "$nostdinc" = yes ]; } ||
+       { [ "$link" = yes ] && [ "$nostdlib" = yes ]; }; then :
+    else set -- -stdlib=libc++ "$@"; fi
+fi
+[ "$link" = no ] || set -- --unwindlib=libunwind -fuse-ld=lld "$@"
+if [ -n "${LLVM_AUDIT_LOG:-}" ]; then
+  printf 'host\t%s\t%s\n' "$llvm_bin/$compiler" "$*" >> "$LLVM_AUDIT_LOG"
+fi
+exec "$llvm_bin/$compiler" --rtlib=compiler-rt "$@"
