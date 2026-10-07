@@ -47,10 +47,14 @@ jobs:
           lld-23 --version
           df -h .
 
-      - name: Fetch and install configured feeds
+      - name: Fetch feeds and apply LLVM package overlays
         shell: bash
         run: |
           ./scripts/feeds update -a
+          git clone --depth 1 --branch main \
+            https://github.com/fxfall/immortalwrt-llvm-packages.git \
+            "$RUNNER_TEMP/immortalwrt-llvm-packages"
+          "$RUNNER_TEMP/immortalwrt-llvm-packages/apply.sh" "$GITHUB_WORKSPACE"
           ./scripts/feeds install -a
 
       - name: Build default x86_64 firmware with LLVM
